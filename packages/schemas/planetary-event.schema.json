@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gaia.noosphere/schema/planetary-event.schema.json",
+  "title": "Gaia Planetary Event",
+  "description": "The normalized event format used by Gaia's sensory system.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "observedAt",
+    "receivedAt",
+    "source",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique event identifier."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "agent.system",
+        "agent.network",
+        "environment.weather",
+        "geophysical.seismic",
+        "solar.activity",
+        "market.tick",
+        "system.heartbeat"
+      ]
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the source observed the event, in UTC."
+    },
+    "receivedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Gaia received the event, in UTC."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Pseudonymous identifier for an agent or public feed."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "agent",
+            "public-feed",
+            "simulator"
+          ]
+        },
+        "trust": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Optional confidence assigned to this source."
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "latitude",
+        "longitude"
+      ],
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "accuracyKm": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "data": {
+      "type": "object",
+      "description": "Event-specific normalized measurements."
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": [
+            "public",
+            "aggregated",
+            "private"
+          ]
+        },
+        "containsPersonalData": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
