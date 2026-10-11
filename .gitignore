@@ -1,0 +1,33 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Generated / runtime data
+data/
+artifacts/
+models/
+logs/
+
+# JavaScript
+node_modules/
+dist/
+.next/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Go
+bin/
+*.exe
+*.test
+*.out
+
+# Editors / operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
