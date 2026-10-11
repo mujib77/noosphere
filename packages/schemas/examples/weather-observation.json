@@ -1,0 +1,27 @@
+{
+  "id": "evt_weather_bengaluru_20261011_060000z",
+  "type": "environment.weather",
+  "observedAt": "2026-10-11T06:00:00Z",
+  "receivedAt": "2026-10-11T06:00:02Z",
+  "source": {
+    "id": "simulator.weather.bengaluru",
+    "kind": "simulator",
+    "trust": 0.9
+  },
+  "location": {
+    "latitude": 12.9716,
+    "longitude": 77.5946,
+    "accuracyKm": 5
+  },
+  "data": {
+    "condition": "partly-cloudy",
+    "temperatureC": 24.8,
+    "humidityPct": 76,
+    "pressureHpa": 1012.4,
+    "windSpeedKph": 11.6
+  },
+  "privacy": {
+    "level": "public",
+    "containsPersonalData": false
+  }
+}
