@@ -178,8 +178,12 @@ func stateHandler(brain *planetaryBrain) http.HandlerFunc {
 }
 
 func writeJSON(writer http.ResponseWriter, status int, payload any) {
+	writer.Header().Set("Access-Control-Allow-Origin", "*")
+	writer.Header().Set("Cache-Control", "no-store")
 	writer.Header().Set("Content-Type", "application/json")
+
 	writer.WriteHeader(status)
+
 	_ = json.NewEncoder(writer).Encode(payload)
 }
 
