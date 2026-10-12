@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
@@ -13,9 +16,20 @@ import (
 )
 
 func main() {
+	endpoint := flag.String(
+		"endpoint",
+		"",
+		"optional Gaia ingest endpoint, for example http://localhost:8080/v1/events",
+	)
+	flag.Parse()
+
 	encoder := json.NewEncoder(os.Stdout)
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
@@ -31,11 +45,50 @@ func main() {
 				log.Printf("encode event: %v", err)
 			}
 
+			if *endpoint != "" {
+				if err := submitEvent(client, *endpoint, weather); err != nil {
+					log.Printf("submit event: %v", err)
+					continue
+				}
+
+				log.Printf("submitted event %s", weather.ID)
+			}
+
 		case <-stop:
 			log.Println("Gaia weather simulator stopped.")
 			return
 		}
 	}
+}
+
+func submitEvent(client *http.Client, endpoint string, weather event.Event) error {
+	payload, err := json.Marshal(weather)
+	if err != nil {
+		return fmt.Errorf("marshal event: %w", err)
+	}
+
+	request, err := http.NewRequest(
+		http.MethodPost,
+		endpoint,
+		bytes.NewReader(payload),
+	)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+
+	response, err := client.Do(request)
+	if err != nil {
+		return fmt.Errorf("send request: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("ingest service returned %s", response.Status)
+	}
+
+	return nil
 }
 
 func weatherEvent(now time.Time) event.Event {
