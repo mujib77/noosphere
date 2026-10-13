@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gaia / Noosphere</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GAIA / NOOSPHERE</p>
+          <h1>Planetary neural organism</h1>
+        </div>
+
+        <div class="connection">
+          <span id="connection-dot" class="connection-dot"></span>
+          <span id="connection-text">Connecting to brain…</span>
+        </div>
+      </header>
+
+      <section class="organism">
+        <div class="planet-stage">
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+
+          <div id="planet" class="planet" aria-label="Living representation of Gaia">
+            <div class="planet-core"></div>
+            <div class="planet-atmosphere"></div>
+          </div>
+        </div>
+
+        <section class="state-panel" aria-live="polite">
+          <p class="eyebrow">LIVE LATENT STATE</p>
+          <p id="activity-value" class="activity-value">--%</p>
+          <p class="activity-label">Global arousal</p>
+
+          <div class="event-details">
+            <span>Last event</span>
+            <strong id="event-id">Waiting for sensory input</strong>
+          </div>
+
+          <div class="event-details">
+            <span>Updated</span>
+            <strong id="updated-at">--</strong>
+          </div>
+        </section>
+      </section>
+
+      <section>
+        <div class="section-heading">
+          <p class="eyebrow">NEURAL DIMENSIONS</p>
+          <p>Continuously shaped by incoming planetary signals.</p>
+        </div>
+
+        <div id="dimensions" class="dimensions"></div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
