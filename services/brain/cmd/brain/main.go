@@ -17,6 +17,7 @@ const (
 	ingestURL    = "http://localhost:8080/v1/events/latest"
 	brainPort    = ":8090"
 	pollInterval = time.Second
+	historyLimit = 120
 )
 
 type incomingEvent struct {
@@ -35,9 +36,22 @@ type brainState struct {
 	Dimensions  map[string]float64 `json:"dimensions"`
 }
 
+type stateSample struct {
+	ObservedAt    string  `json:"observedAt"`
+	EventID       string  `json:"eventId"`
+	GlobalArousal float64 `json:"globalArousal"`
+	Coherence     float64 `json:"coherence"`
+	Anomaly       float64 `json:"anomaly"`
+}
+
+type stateHistory struct {
+	Samples []stateSample `json:"samples"`
+}
+
 type planetaryBrain struct {
-	mu    sync.RWMutex
-	state brainState
+	mu      sync.RWMutex
+	state   brainState
+	history []stateSample
 }
 
 func newPlanetaryBrain() *planetaryBrain {
@@ -130,6 +144,20 @@ func (brain *planetaryBrain) apply(incoming incomingEvent) {
 
 	brain.state.LastEventID = incoming.ID
 	brain.state.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	brain.history = append(brain.history, stateSample{
+		ObservedAt:    brain.state.UpdatedAt,
+		EventID:       incoming.ID,
+		GlobalArousal: brain.state.Dimensions["globalArousal"],
+		Coherence:     brain.state.Dimensions["coherence"],
+		Anomaly:       brain.state.Dimensions["anomaly"],
+	})
+
+	if len(brain.history) > historyLimit {
+		brain.history = append(
+			[]stateSample(nil),
+			brain.history[len(brain.history)-historyLimit:]...,
+		)
+	}
 
 	log.Printf("brain updated from event %s", incoming.ID)
 }
@@ -148,6 +176,18 @@ func (brain *planetaryBrain) snapshot() brainState {
 		UpdatedAt:   brain.state.UpdatedAt,
 		LastEventID: brain.state.LastEventID,
 		Dimensions:  dimensions,
+	}
+}
+
+func (brain *planetaryBrain) historySnapshot() stateHistory {
+	brain.mu.RLock()
+	defer brain.mu.RUnlock()
+
+	samples := make([]stateSample, len(brain.history))
+	copy(samples, brain.history)
+
+	return stateHistory{
+		Samples: samples,
 	}
 }
 
@@ -174,6 +214,12 @@ func fetchLatestEvent(client *http.Client) (incomingEvent, error) {
 func stateHandler(brain *planetaryBrain) http.HandlerFunc {
 	return func(writer http.ResponseWriter, _ *http.Request) {
 		writeJSON(writer, http.StatusOK, brain.snapshot())
+	}
+}
+
+func historyHandler(brain *planetaryBrain) http.HandlerFunc {
+	return func(writer http.ResponseWriter, _ *http.Request) {
+		writeJSON(writer, http.StatusOK, brain.historySnapshot())
 	}
 }
 
@@ -221,6 +267,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/state", stateHandler(brain))
+	mux.HandleFunc("GET /v1/state/history", historyHandler(brain))
 
 	server := &http.Server{
 		Addr:              brainPort,

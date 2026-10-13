@@ -45,3 +45,28 @@ func TestApplyUpdatesLatentState(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyRecordsStateHistory(t *testing.T) {
+	brain := newPlanetaryBrain()
+
+	brain.apply(incomingEvent{
+		ID: "evt_test_history_001",
+		Source: source{
+			Trust: 0.8,
+		},
+		Data: map[string]any{},
+	})
+
+	history := brain.historySnapshot()
+
+	if len(history.Samples) != 1 {
+		t.Fatalf("expected one history sample, got %d", len(history.Samples))
+	}
+
+	if history.Samples[0].EventID != "evt_test_history_001" {
+		t.Fatalf(
+			"expected sample event ID to be recorded, got %q",
+			history.Samples[0].EventID,
+		)
+	}
+}
