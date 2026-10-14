@@ -1,5 +1,8 @@
 const brainUrl = "http://localhost:8090/v1/state";
 
+const historyUrl = "http://localhost:8090/v1/state/history";
+const neuralTrace = document.querySelector("#neural-trace");
+
 const dimensions = [
   ["thermalEnergy", "Thermal energy"],
   ["atmosphericMoisture", "Atmospheric moisture"],
@@ -66,6 +69,56 @@ function renderState(state) {
   renderDimensions(values);
 }
 
+function tracePath(samples, key) {
+  const width = 700;
+  const height = 180;
+  const padding = 14;
+  const chartWidth = width - padding * 2;
+  const chartHeight = height - padding * 2;
+
+  return samples
+    .map((sample, index) => {
+      const value = Math.max(0, Math.min(1, sample[key] ?? 0));
+      const x = padding + (chartWidth * index) / Math.max(1, samples.length - 1);
+      const y = height - padding - value * chartHeight;
+      const command = index === 0 ? "M" : "L";
+
+      return `${command} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+function renderHistory(samples) {
+  const recentSamples = samples.slice(-120);
+
+  if (recentSamples.length === 0) {
+    neuralTrace.innerHTML = "";
+    return;
+  }
+
+  const lastSample = recentSamples[recentSamples.length - 1];
+  const grid = [0.2, 0.4, 0.6, 0.8]
+    .map((level) => {
+      const y = 180 - 14 - level * 152;
+      return `<line class="trace-grid" x1="14" y1="${y}" x2="686" y2="${y}"></line>`;
+    })
+    .join("");
+
+  neuralTrace.innerHTML = `
+    ${grid}
+    <path class="trace-line trace-arousal" d="${tracePath(recentSamples, "globalArousal")}"></path>
+    <path class="trace-line trace-coherence" d="${tracePath(recentSamples, "coherence")}"></path>
+    <path class="trace-line trace-anomaly" d="${tracePath(recentSamples, "anomaly")}"></path>
+    <circle
+      class="trace-dot trace-arousal"
+      cx="686"
+      cy="${(166 - (lastSample.globalArousal ?? 0) * 152).toFixed(1)}"
+      r="4"
+      fill="var(--cyan)"
+    ></circle>
+  `;
+}
+
 function renderOffline() {
   connectionDot.classList.remove("online");
   connectionText.textContent = "Brain unavailable";
@@ -73,13 +126,20 @@ function renderOffline() {
 
 async function refreshState() {
   try {
-    const response = await fetch(brainUrl);
+    const [stateResponse, historyResponse] = await Promise.all([
+      fetch(brainUrl),
+      fetch(historyUrl)
+    ]);
 
-    if (!response.ok) {
+    if (!stateResponse.ok || !historyResponse.ok) {
       throw new Error("Brain state request failed");
     }
 
-    renderState(await response.json());
+    const state = await stateResponse.json();
+    const history = await historyResponse.json();
+
+    renderState(state);
+    renderHistory(history.samples ?? []);
   } catch {
     renderOffline();
   }
