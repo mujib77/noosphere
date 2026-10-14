@@ -16,12 +16,13 @@ type server struct {
 
 func main() {
 	app := server{
-		events: &store.RecentEvents{},
+		events: store.NewRecentEvents(256),
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", app.health)
 	mux.HandleFunc("POST /v1/events", app.ingestEvent)
+	mux.HandleFunc("GET /v1/events", app.recentEvents)
 	mux.HandleFunc("GET /v1/events/latest", app.latestEvent)
 
 	httpServer := &http.Server{
@@ -84,6 +85,16 @@ func (app server) latestEvent(writer http.ResponseWriter, _ *http.Request) {
 	}
 
 	writeJSON(writer, http.StatusOK, latest)
+}
+
+func (app server) recentEvents(writer http.ResponseWriter, request *http.Request) {
+	afterEventID := request.URL.Query().Get("after")
+
+	writeJSON(
+		writer,
+		http.StatusOK,
+		app.events.Since(afterEventID),
+	)
 }
 
 func writeJSON(writer http.ResponseWriter, status int, payload any) {
