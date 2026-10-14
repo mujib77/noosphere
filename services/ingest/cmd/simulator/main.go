@@ -16,12 +16,23 @@ import (
 )
 
 func main() {
+	mode := flag.String(
+		"mode",
+		"weather",
+		"simulator mode: weather or solar",
+	)
+
 	endpoint := flag.String(
 		"endpoint",
 		"",
 		"optional Gaia ingest endpoint, for example http://localhost:8080/v1/events",
 	)
+
 	flag.Parse()
+
+	if *mode != "weather" && *mode != "solar" {
+		log.Fatal("mode must be either weather or solar")
+	}
 
 	encoder := json.NewEncoder(os.Stdout)
 	ticker := time.NewTicker(time.Second)
@@ -34,28 +45,43 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
-	log.Println("Gaia weather simulator started. Press Ctrl+C to stop.")
+	log.Printf(
+		"Gaia %s simulator started. Press Ctrl+C to stop.",
+		*mode,
+	)
 
 	for {
 		select {
 		case now := <-ticker.C:
-			weather := weatherEvent(now)
+			var outgoing event.Event
 
-			if err := encoder.Encode(weather); err != nil {
+			switch *mode {
+			case "weather":
+				outgoing = weatherEvent(now)
+
+			case "solar":
+				outgoing = solarEvent(now)
+			}
+
+			if err := encoder.Encode(outgoing); err != nil {
 				log.Printf("encode event: %v", err)
 			}
 
 			if *endpoint != "" {
-				if err := submitEvent(client, *endpoint, weather); err != nil {
+				if err := submitEvent(client, *endpoint, outgoing); err != nil {
 					log.Printf("submit event: %v", err)
 					continue
 				}
 
-				log.Printf("submitted event %s", weather.ID)
+				log.Printf(
+					"submitted %s event %s",
+					outgoing.Type,
+					outgoing.ID,
+				)
 			}
 
 		case <-stop:
-			log.Println("Gaia weather simulator stopped.")
+			log.Printf("Gaia %s simulator stopped.", *mode)
 			return
 		}
 	}
@@ -115,6 +141,41 @@ func weatherEvent(now time.Time) event.Event {
 			"humidityPct":  round(76 - wave*8),
 			"pressureHpa":  round(1012.4 + wave*1.8),
 			"windSpeedKph": round(11.6 + wave*4),
+		},
+		Privacy: event.Privacy{
+			Level:                "public",
+			ContainsPersonalData: false,
+		},
+	}
+}
+
+func solarEvent(now time.Time) event.Event {
+	slowWave := math.Sin(float64(now.Unix()) / 18)
+	fastWave := math.Sin(float64(now.Unix()) / 6)
+
+	kpIndex := round(4.5 + slowWave*2.8 + fastWave*0.7)
+	solarWind := round(490 + slowWave*150 + fastWave*45)
+	xrayFlux := round(0.45 + slowWave*0.2 + fastWave*0.08)
+
+	return event.Event{
+		ID:         fmt.Sprintf("evt_solar_global_%d", now.UnixNano()),
+		Type:       "solar.activity",
+		ObservedAt: now.UTC(),
+		ReceivedAt: time.Now().UTC(),
+		Source: event.Source{
+			ID:    "simulator.solar.global",
+			Kind:  "simulator",
+			Trust: 0.85,
+		},
+		Location: event.Location{
+			Latitude:   0,
+			Longitude:  0,
+			AccuracyKm: 40075,
+		},
+		Data: map[string]any{
+			"kpIndex":      kpIndex,
+			"solarWindKph": solarWind,
+			"xrayFlux":     xrayFlux,
 		},
 		Privacy: event.Privacy{
 			Level:                "public",
