@@ -6,7 +6,8 @@ func TestApplyUpdatesLatentState(t *testing.T) {
 	brain := newPlanetaryBrain()
 
 	brain.apply(incomingEvent{
-		ID: "evt_test_weather_001",
+		Type: "environment.weather",
+		ID:   "evt_test_weather_001",
 		Source: source{
 			Trust: 0.9,
 		},
@@ -50,6 +51,8 @@ func TestApplyRecordsStateHistory(t *testing.T) {
 	brain := newPlanetaryBrain()
 
 	brain.apply(incomingEvent{
+		Type: "environment.weather",
+
 		ID: "evt_test_history_001",
 		Source: source{
 			Trust: 0.8,
@@ -68,5 +71,31 @@ func TestApplyRecordsStateHistory(t *testing.T) {
 			"expected sample event ID to be recorded, got %q",
 			history.Samples[0].EventID,
 		)
+	}
+}
+
+func TestApplyRespondsToSolarActivity(t *testing.T) {
+	brain := newPlanetaryBrain()
+
+	brain.apply(incomingEvent{
+		ID:   "evt_test_solar_001",
+		Type: "solar.activity",
+		Source: source{
+			Trust: 0.95,
+		},
+		Data: map[string]any{
+			"kpIndex":      7.0,
+			"solarWindKph": 720.0,
+			"xrayFlux":     0.8,
+		},
+	})
+
+	state := brain.snapshot()
+
+	if state.Dimensions["solarExcitation"] <= 0 {
+		t.Errorf(
+	"expected solar excitation to increase above zero, got %f",
+	state.Dimensions["solarExcitation"],
+)
 	}
 }

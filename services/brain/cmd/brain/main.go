@@ -23,6 +23,7 @@ const (
 
 type incomingEvent struct {
 	ID     string         `json:"id"`
+	Type   string         `json:"type"`
 	Source source         `json:"source"`
 	Data   map[string]any `json:"data"`
 }
@@ -38,11 +39,12 @@ type brainState struct {
 }
 
 type stateSample struct {
-	ObservedAt    string  `json:"observedAt"`
-	EventID       string  `json:"eventId"`
-	GlobalArousal float64 `json:"globalArousal"`
-	Coherence     float64 `json:"coherence"`
-	Anomaly       float64 `json:"anomaly"`
+	ObservedAt      string  `json:"observedAt"`
+	EventID         string  `json:"eventId"`
+	GlobalArousal   float64 `json:"globalArousal"`
+	Coherence       float64 `json:"coherence"`
+	Anomaly         float64 `json:"anomaly"`
+	SolarExcitation float64 `json:"solarExcitation"`
 }
 
 type stateHistory struct {
@@ -67,6 +69,7 @@ func newPlanetaryBrain() *planetaryBrain {
 				"coherence":           0.5,
 				"anomaly":             0.0,
 				"sourceTrust":         0.0,
+				"solarExcitation":     0.0,
 			},
 		},
 	}
@@ -104,53 +107,51 @@ func (brain *planetaryBrain) ingestPending(client *http.Client) {
 }
 
 func (brain *planetaryBrain) apply(incoming incomingEvent) {
-	temperature := number(incoming.Data["temperatureC"], 20)
-	humidity := number(incoming.Data["humidityPct"], 50)
-	pressure := number(incoming.Data["pressureHpa"], 1013)
-	windSpeed := number(incoming.Data["windSpeedKph"], 10)
+	targets := targetsForEvent(incoming)
 
-	targets := map[string]float64{
-		"thermalEnergy":       clamp((temperature + 20) / 60),
-		"atmosphericMoisture": clamp(humidity / 100),
-		"pressureField":       clamp((pressure - 960) / 100),
-		"windMotion":          clamp(windSpeed / 60),
-		"sourceTrust":         clamp(incoming.Source.Trust),
+	if len(targets) == 0 {
+		log.Printf("ignored unsupported event type %q", incoming.Type)
+		return
 	}
-
-	targets["anomaly"] = clamp(
-		(abs(temperature-20)/30 +
-			abs(humidity-55)/100 +
-			abs(pressure-1013)/60 +
-			windSpeed/100) / 4,
-	)
-
-	targets["globalArousal"] = clamp(
-		(targets["thermalEnergy"] +
-			targets["windMotion"] +
-			targets["anomaly"]) / 3,
-	)
-
-	targets["coherence"] = clamp(
-		(targets["sourceTrust"] + (1 - targets["anomaly"])) / 2,
-	)
 
 	brain.mu.Lock()
 	defer brain.mu.Unlock()
 
+	dimensions := brain.state.Dimensions
+
 	for name, target := range targets {
-		brain.state.Dimensions[name] = round(
-			blend(brain.state.Dimensions[name], target, 0.35),
-		)
+		dimensions[name] = round(blend(dimensions[name], target, 0.35))
 	}
+
+	arousalTarget := clamp(
+		(dimensions["thermalEnergy"] +
+			dimensions["windMotion"] +
+			dimensions["solarExcitation"] +
+			dimensions["anomaly"]) / 4,
+	)
+
+	dimensions["globalArousal"] = round(
+		blend(dimensions["globalArousal"], arousalTarget, 0.35),
+	)
+
+	coherenceTarget := clamp(
+		(dimensions["sourceTrust"] + (1 - dimensions["anomaly"])) / 2,
+	)
+
+	dimensions["coherence"] = round(
+		blend(dimensions["coherence"], coherenceTarget, 0.35),
+	)
 
 	brain.state.LastEventID = incoming.ID
 	brain.state.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+
 	brain.history = append(brain.history, stateSample{
-		ObservedAt:    brain.state.UpdatedAt,
-		EventID:       incoming.ID,
-		GlobalArousal: brain.state.Dimensions["globalArousal"],
-		Coherence:     brain.state.Dimensions["coherence"],
-		Anomaly:       brain.state.Dimensions["anomaly"],
+		ObservedAt:      brain.state.UpdatedAt,
+		EventID:         incoming.ID,
+		GlobalArousal:   brain.state.Dimensions["globalArousal"],
+		Coherence:       brain.state.Dimensions["coherence"],
+		Anomaly:         brain.state.Dimensions["anomaly"],
+		SolarExcitation: brain.state.Dimensions["solarExcitation"],
 	})
 
 	if len(brain.history) > historyLimit {
@@ -160,7 +161,62 @@ func (brain *planetaryBrain) apply(incoming incomingEvent) {
 		)
 	}
 
-	log.Printf("brain updated from event %s", incoming.ID)
+	log.Printf("brain updated from %s event %s", incoming.Type, incoming.ID)
+}
+
+func targetsForEvent(incoming incomingEvent) map[string]float64 {
+	switch incoming.Type {
+	case "environment.weather":
+		return weatherTargets(incoming)
+
+	case "solar.activity":
+		return solarTargets(incoming)
+
+	default:
+		return nil
+	}
+}
+
+func weatherTargets(incoming incomingEvent) map[string]float64 {
+	temperature := number(incoming.Data["temperatureC"], 20)
+	humidity := number(incoming.Data["humidityPct"], 50)
+	pressure := number(incoming.Data["pressureHpa"], 1013)
+	windSpeed := number(incoming.Data["windSpeedKph"], 10)
+
+	anomaly := clamp(
+		(abs(temperature-20)/30 +
+			abs(humidity-55)/100 +
+			abs(pressure-1013)/60 +
+			windSpeed/100) / 4,
+	)
+
+	return map[string]float64{
+		"thermalEnergy":       clamp((temperature + 20) / 60),
+		"atmosphericMoisture": clamp(humidity / 100),
+		"pressureField":       clamp((pressure - 960) / 100),
+		"windMotion":          clamp(windSpeed / 60),
+		"solarExcitation":     0,
+		"anomaly":             anomaly,
+		"sourceTrust":         clamp(incoming.Source.Trust),
+	}
+}
+
+func solarTargets(incoming incomingEvent) map[string]float64 {
+	kpIndex := number(incoming.Data["kpIndex"], 0)
+	solarWind := number(incoming.Data["solarWindKph"], 400)
+	xrayFlux := number(incoming.Data["xrayFlux"], 0)
+
+	solarExcitation := clamp(
+		(kpIndex/9)*0.6 +
+			((solarWind-250)/650)*0.25 +
+			xrayFlux*0.15,
+	)
+
+	return map[string]float64{
+		"solarExcitation": solarExcitation,
+		"anomaly":         clamp(solarExcitation * 0.8),
+		"sourceTrust":     clamp(incoming.Source.Trust),
+	}
 }
 
 func (brain *planetaryBrain) snapshot() brainState {
