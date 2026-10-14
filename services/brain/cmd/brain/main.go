@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	ingestURL    = "http://localhost:8080/v1/events/latest"
+	ingestURL    = "http://localhost:8080/v1/events"
 	brainPort    = ":8090"
 	pollInterval = time.Second
 	historyLimit = 120
@@ -77,7 +78,7 @@ func (brain *planetaryBrain) run(ctx context.Context) {
 	defer ticker.Stop()
 
 	for {
-		brain.ingestLatest(client)
+		brain.ingestPending(client)
 
 		select {
 		case <-ctx.Done():
@@ -87,17 +88,17 @@ func (brain *planetaryBrain) run(ctx context.Context) {
 	}
 }
 
-func (brain *planetaryBrain) ingestLatest(client *http.Client) {
-	incoming, err := fetchLatestEvent(client)
+func (brain *planetaryBrain) ingestPending(client *http.Client) {
+	brain.mu.RLock()
+	afterEventID := brain.state.LastEventID
+	brain.mu.RUnlock()
+
+	events, err := fetchEvents(client, afterEventID)
 	if err != nil {
 		return
 	}
 
-	brain.mu.RLock()
-	alreadyProcessed := incoming.ID == brain.state.LastEventID
-	brain.mu.RUnlock()
-
-	if !alreadyProcessed {
+	for _, incoming := range events {
 		brain.apply(incoming)
 	}
 }
@@ -191,24 +192,33 @@ func (brain *planetaryBrain) historySnapshot() stateHistory {
 	}
 }
 
-func fetchLatestEvent(client *http.Client) (incomingEvent, error) {
-	response, err := client.Get(ingestURL)
+func fetchEvents(
+	client *http.Client,
+	afterEventID string,
+) ([]incomingEvent, error) {
+	endpoint := ingestURL
+
+	if afterEventID != "" {
+		endpoint += "?after=" + url.QueryEscape(afterEventID)
+	}
+
+	response, err := client.Get(endpoint)
 	if err != nil {
-		return incomingEvent{}, err
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return incomingEvent{}, errors.New("latest event is unavailable")
+		return nil, errors.New("recent events are unavailable")
 	}
 
-	var incoming incomingEvent
+	var events []incomingEvent
 
-	if err := json.NewDecoder(response.Body).Decode(&incoming); err != nil {
-		return incomingEvent{}, err
+	if err := json.NewDecoder(response.Body).Decode(&events); err != nil {
+		return nil, err
 	}
 
-	return incoming, nil
+	return events, nil
 }
 
 func stateHandler(brain *planetaryBrain) http.HandlerFunc {
