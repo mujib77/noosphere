@@ -29,13 +29,16 @@ type incomingEvent struct {
 }
 
 type source struct {
+	ID    string  `json:"id"`
 	Trust float64 `json:"trust"`
 }
 
 type brainState struct {
-	UpdatedAt   string             `json:"updatedAt"`
-	LastEventID string             `json:"lastEventId"`
-	Dimensions  map[string]float64 `json:"dimensions"`
+	UpdatedAt     string             `json:"updatedAt"`
+	LastEventID   string             `json:"lastEventId"`
+	LastEventType string             `json:"lastEventType"`
+	LastSourceID  string             `json:"lastSourceId"`
+	Dimensions    map[string]float64 `json:"dimensions"`
 }
 
 type stateSample struct {
@@ -143,6 +146,8 @@ func (brain *planetaryBrain) apply(incoming incomingEvent) {
 	)
 
 	brain.state.LastEventID = incoming.ID
+	brain.state.LastEventType = incoming.Type
+	brain.state.LastSourceID = incoming.Source.ID
 	brain.state.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 
 	brain.history = append(brain.history, stateSample{
@@ -229,9 +234,11 @@ func (brain *planetaryBrain) snapshot() brainState {
 	}
 
 	return brainState{
-		UpdatedAt:   brain.state.UpdatedAt,
-		LastEventID: brain.state.LastEventID,
-		Dimensions:  dimensions,
+		UpdatedAt:     brain.state.UpdatedAt,
+		LastEventID:   brain.state.LastEventID,
+		Dimensions:    dimensions,
+		LastEventType: brain.state.LastEventType,
+		LastSourceID:  brain.state.LastSourceID,
 	}
 }
 

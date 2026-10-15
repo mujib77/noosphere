@@ -9,6 +9,7 @@ func TestApplyUpdatesLatentState(t *testing.T) {
 		Type: "environment.weather",
 		ID:   "evt_test_weather_001",
 		Source: source{
+			ID:    "simulator.weather.bengaluru",
 			Trust: 0.9,
 		},
 		Data: map[string]any{
@@ -23,6 +24,20 @@ func TestApplyUpdatesLatentState(t *testing.T) {
 
 	if state.LastEventID != "evt_test_weather_001" {
 		t.Fatalf("expected event ID to be recorded, got %q", state.LastEventID)
+	}
+
+	if state.LastEventType != "environment.weather" {
+		t.Fatalf(
+			"expected weather event type, got %q",
+			state.LastEventType,
+		)
+	}
+
+	if state.LastSourceID != "simulator.weather.bengaluru" {
+		t.Fatalf(
+			"expected weather source ID, got %q",
+			state.LastSourceID,
+		)
 	}
 
 	if state.UpdatedAt == "" {
@@ -94,8 +109,8 @@ func TestApplyRespondsToSolarActivity(t *testing.T) {
 
 	if state.Dimensions["solarExcitation"] <= 0 {
 		t.Errorf(
-	"expected solar excitation to increase above zero, got %f",
-	state.Dimensions["solarExcitation"],
-)
+			"expected solar excitation to increase above zero, got %f",
+			state.Dimensions["solarExcitation"],
+		)
 	}
 }
