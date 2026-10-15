@@ -195,7 +195,6 @@ func weatherTargets(incoming incomingEvent) map[string]float64 {
 		"atmosphericMoisture": clamp(humidity / 100),
 		"pressureField":       clamp((pressure - 960) / 100),
 		"windMotion":          clamp(windSpeed / 60),
-		"solarExcitation":     0,
 		"anomaly":             anomaly,
 		"sourceTrust":         clamp(incoming.Source.Trust),
 	}
