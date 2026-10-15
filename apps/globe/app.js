@@ -8,6 +8,7 @@ const dimensions = [
   ["atmosphericMoisture", "Atmospheric moisture"],
   ["pressureField", "Pressure field"],
   ["windMotion", "Wind motion"],
+  ["solarExcitation", "Solar excitation"],
   ["globalArousal", "Global arousal"],
   ["coherence", "Coherence"],
   ["anomaly", "Anomaly"],
@@ -51,6 +52,7 @@ function renderState(state) {
   const values = state.dimensions;
   const arousal = values.globalArousal ?? 0;
   const anomaly = values.anomaly ?? 0;
+  const solarExcitation = values.solarExcitation ?? 0;
 
   activityValue.textContent = `${Math.round(arousal * 100)}%`;
   eventID.textContent = state.lastEventId ?? "Waiting for sensory input";
@@ -63,6 +65,10 @@ function renderState(state) {
     "--glow-strength",
     (0.25 + arousal + anomaly * 0.7).toFixed(3)
   );
+  document.documentElement.style.setProperty(
+  "--solar-halo",
+  (0.08 + solarExcitation * 0.82).toFixed(3)
+);
 
   connectionDot.classList.add("online");
   connectionText.textContent = "Brain linked";
@@ -108,6 +114,7 @@ function renderHistory(samples) {
     ${grid}
     <path class="trace-line trace-arousal" d="${tracePath(recentSamples, "globalArousal")}"></path>
     <path class="trace-line trace-coherence" d="${tracePath(recentSamples, "coherence")}"></path>
+    <path class="trace-line trace-solar" d="${tracePath(recentSamples, "solarExcitation")}"></path>
     <path class="trace-line trace-anomaly" d="${tracePath(recentSamples, "anomaly")}"></path>
     <circle
       class="trace-dot trace-arousal"

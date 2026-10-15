@@ -9,6 +9,7 @@
   --green: #62ffbd;
   --glow-strength: 0.55;
   --planet-scale: 1;
+  --solar-halo: 0.05;
 }
 
 * {
@@ -372,4 +373,25 @@ h1 {
 
 .anomaly-swatch {
   background: #ff8e8e;
+}
+
+.planet::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  opacity: var(--solar-halo);
+  background: radial-gradient(
+    circle at 28% 30%,
+    rgba(255, 213, 109, 0.95),
+    transparent 36%
+  );
+  mix-blend-mode: screen;
+}
+ 
+.trace-solar {
+  stroke: #ffd56d;
+}
+
+.solar-swatch {
+  background: #ffd56d;
 }
