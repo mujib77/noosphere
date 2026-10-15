@@ -20,6 +20,7 @@ const connectionDot = document.querySelector("#connection-dot");
 const connectionText = document.querySelector("#connection-text");
 const activityValue = document.querySelector("#activity-value");
 const eventID = document.querySelector("#event-id");
+const eventSource = document.querySelector("#event-source");
 const updatedAt = document.querySelector("#updated-at");
 const dimensionsRoot = document.querySelector("#dimensions");
 
@@ -48,6 +49,25 @@ function renderDimensions(values) {
     .join("");
 }
 
+function sourceName(sourceID) {
+  const names = {
+    "noaa.swpc.planetary-k-index": "NOAA SWPC",
+    "simulator.weather.bengaluru": "Weather simulator",
+    "simulator.solar.global": "Solar simulator"
+  };
+
+  return names[sourceID] ?? sourceID ?? "Unknown source";
+}
+
+function eventTypeName(eventType) {
+  const names = {
+    "environment.weather": "Weather",
+    "solar.activity": "Solar activity"
+  };
+
+  return names[eventType] ?? eventType ?? "Unknown event";
+}
+
 function renderState(state) {
   const values = state.dimensions;
   const arousal = values.globalArousal ?? 0;
@@ -56,6 +76,9 @@ function renderState(state) {
 
   activityValue.textContent = `${Math.round(arousal * 100)}%`;
   eventID.textContent = state.lastEventId ?? "Waiting for sensory input";
+  eventSource.textContent = `${sourceName(state.lastSourceId)} · ${eventTypeName(
+  state.lastEventType
+)}`;
   updatedAt.textContent = state.updatedAt
     ? new Date(state.updatedAt).toLocaleTimeString()
     : "--";
@@ -129,6 +152,7 @@ function renderHistory(samples) {
 function renderOffline() {
   connectionDot.classList.remove("online");
   connectionText.textContent = "Brain unavailable";
+  eventSource.textContent = "Brain unavailable";
 }
 
 async function refreshState() {
