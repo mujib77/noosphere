@@ -73,6 +73,8 @@ func newPlanetaryBrain() *planetaryBrain {
 				"anomaly":             0.0,
 				"sourceTrust":         0.0,
 				"solarExcitation":     0.0,
+				"machineVitality":     0.5,
+				"digitalActivity":     0.0,
 			},
 		},
 	}
@@ -130,7 +132,8 @@ func (brain *planetaryBrain) apply(incoming incomingEvent) {
 		(dimensions["thermalEnergy"] +
 			dimensions["windMotion"] +
 			dimensions["solarExcitation"] +
-			dimensions["anomaly"]) / 4,
+			dimensions["digitalActivity"] +
+			dimensions["anomaly"]) / 5,
 	)
 
 	dimensions["globalArousal"] = round(
@@ -177,6 +180,9 @@ func targetsForEvent(incoming incomingEvent) map[string]float64 {
 	case "solar.activity":
 		return solarTargets(incoming)
 
+	case "agent.system":
+		return agentSystemTargets(incoming)
+
 	default:
 		return nil
 	}
@@ -219,6 +225,23 @@ func solarTargets(incoming incomingEvent) map[string]float64 {
 	return map[string]float64{
 		"solarExcitation": solarExcitation,
 		"anomaly":         clamp(solarExcitation * 0.8),
+		"sourceTrust":     clamp(incoming.Source.Trust),
+	}
+}
+
+func agentSystemTargets(incoming incomingEvent) map[string]float64 {
+	load1 := number(incoming.Data["load1"], 0)
+	cpuCount := number(incoming.Data["cpuCount"], 1)
+
+	if cpuCount < 1 {
+		cpuCount = 1
+	}
+
+	loadRatio := clamp(load1 / cpuCount)
+
+	return map[string]float64{
+		"machineVitality": 1 - loadRatio,
+		"digitalActivity": loadRatio,
 		"sourceTrust":     clamp(incoming.Source.Trust),
 	}
 }

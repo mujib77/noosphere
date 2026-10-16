@@ -114,3 +114,36 @@ func TestApplyRespondsToSolarActivity(t *testing.T) {
 		)
 	}
 }
+
+func TestApplyRespondsToLinuxAgentSystemEvent(t *testing.T) {
+	brain := newPlanetaryBrain()
+
+	brain.apply(incomingEvent{
+		ID:   "evt_test_agent_001",
+		Type: "agent.system",
+		Source: source{
+			ID:    "agent.demo-node",
+			Trust: 0.85,
+		},
+		Data: map[string]any{
+			"load1":    3.0,
+			"cpuCount": 4.0,
+		},
+	})
+
+	state := brain.snapshot()
+
+	if state.Dimensions["digitalActivity"] <= 0 {
+		t.Errorf(
+			"expected digital activity to increase, got %f",
+			state.Dimensions["digitalActivity"],
+		)
+	}
+
+	if state.Dimensions["machineVitality"] >= 0.5 {
+		t.Errorf(
+			"expected machine vitality to decrease under load, got %f",
+			state.Dimensions["machineVitality"],
+		)
+	}
+}
