@@ -12,7 +12,9 @@ const dimensions = [
   ["globalArousal", "Global arousal"],
   ["coherence", "Coherence"],
   ["anomaly", "Anomaly"],
-  ["sourceTrust", "Source trust"]
+  ["sourceTrust", "Source trust"],
+  ["machineVitality", "Machine vitality"],
+  ["digitalActivity", "Digital activity"]
 ];
 
 const planet = document.querySelector("#planet");
@@ -53,8 +55,13 @@ function sourceName(sourceID) {
   const names = {
     "noaa.swpc.planetary-k-index": "NOAA SWPC",
     "simulator.weather.bengaluru": "Weather simulator",
-    "simulator.solar.global": "Solar simulator"
+    "simulator.solar.global": "Solar simulator",
+    "agent.demo-node": "Linux agent"
   };
+
+  if (sourceID?.startsWith("agent.")) {
+  return "Linux agent";
+}
 
   return names[sourceID] ?? sourceID ?? "Unknown source";
 }
@@ -62,7 +69,8 @@ function sourceName(sourceID) {
 function eventTypeName(eventType) {
   const names = {
     "environment.weather": "Weather",
-    "solar.activity": "Solar activity"
+    "solar.activity": "Solar activity",
+    "agent.system": "Linux system"
   };
 
   return names[eventType] ?? eventType ?? "Unknown event";
