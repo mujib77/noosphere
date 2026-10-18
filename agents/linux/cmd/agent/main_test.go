@@ -18,3 +18,21 @@ func TestReadLoadAveragesParsesProcData(t *testing.T) {
 		)
 	}
 }
+
+func TestEBPFReadyRequiresBTFAndBPFFS(t *testing.T) {
+	if isEBPFReady(false, false) {
+		t.Fatal("expected eBPF readiness to be false")
+	}
+
+	if isEBPFReady(true, false) {
+		t.Fatal("expected eBPF readiness to require bpffs")
+	}
+
+	if isEBPFReady(false, true) {
+		t.Fatal("expected eBPF readiness to require BTF")
+	}
+
+	if !isEBPFReady(true, true) {
+		t.Fatal("expected eBPF readiness when BTF and bpffs exist")
+	}
+}

@@ -37,6 +37,13 @@ type privacy struct {
 	ContainsPersonalData bool   `json:"containsPersonalData"`
 }
 
+type agentCapabilities struct {
+	KernelRelease string
+	BTFAvailable  bool
+	BPFFSMounted  bool
+	EBPFReady     bool
+}
+
 func main() {
 	endpoint := flag.String(
 		"endpoint",
@@ -118,6 +125,7 @@ func systemEvent(nodeID string) (event, error) {
 		return event{}, err
 	}
 
+	capabilities := detectCapabilities()
 	now := time.Now().UTC()
 
 	return event{
@@ -131,12 +139,16 @@ func systemEvent(nodeID string) (event, error) {
 			Trust: 0.85,
 		},
 		Data: map[string]any{
-			"signal":        "linux-host-health",
-			"load1":         load1,
-			"load5":         load5,
-			"load15":        load15,
-			"uptimeSeconds": uptimeSeconds,
-			"cpuCount":      runtime.NumCPU(),
+			"signal":           "linux-host-health",
+			"load1":            load1,
+			"load5":            load5,
+			"load15":           load15,
+			"uptimeSeconds":    uptimeSeconds,
+			"cpuCount":         runtime.NumCPU(),
+			"kernelRelease":    capabilities.KernelRelease,
+			"ebpfBTFAvailable": capabilities.BTFAvailable,
+			"bpffsMounted":     capabilities.BPFFSMounted,
+			"ebpfReady":        capabilities.EBPFReady,
 		},
 		Privacy: privacy{
 			Level:                "aggregated",
@@ -193,6 +205,33 @@ func readUptimeSeconds() (float64, error) {
 	}
 
 	return strconv.ParseFloat(fields[0], 64)
+}
+
+func detectCapabilities() agentCapabilities {
+	kernelRelease := "unknown"
+
+	if contents, err := os.ReadFile("/proc/sys/kernel/osrelease"); err == nil {
+		kernelRelease = strings.TrimSpace(string(contents))
+	}
+
+	btfAvailable := pathExists("/sys/kernel/btf/vmlinux")
+	bpffsMounted := pathExists("/sys/fs/bpf")
+
+	return agentCapabilities{
+		KernelRelease: kernelRelease,
+		BTFAvailable:  btfAvailable,
+		BPFFSMounted:  bpffsMounted,
+		EBPFReady:     isEBPFReady(btfAvailable, bpffsMounted),
+	}
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func isEBPFReady(btfAvailable bool, bpffsMounted bool) bool {
+	return btfAvailable && bpffsMounted
 }
 
 func submitEvent(

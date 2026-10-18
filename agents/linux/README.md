@@ -7,6 +7,7 @@ Current version emits aggregated host-health signals:
 - 1, 5, and 15 minute CPU load averages
 - System uptime
 - CPU count
+- Linux kernel release and eBPF-readiness metadata
 
 It does not collect process names, command lines, file paths, user data, or network payloads.
 
