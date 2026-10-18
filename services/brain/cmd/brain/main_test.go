@@ -147,3 +147,29 @@ func TestApplyRespondsToLinuxAgentSystemEvent(t *testing.T) {
 		)
 	}
 }
+
+func TestApplyRespondsToSeismicEvent(t *testing.T) {
+	brain := newPlanetaryBrain()
+
+	brain.apply(incomingEvent{
+		ID:   "evt_test_seismic_001",
+		Type: "geophysical.seismic",
+		Source: source{
+			ID:    "usgs.earthquake-feed",
+			Trust: 0.98,
+		},
+		Data: map[string]any{
+			"magnitude": 6.5,
+			"depthKm":   12.0,
+		},
+	})
+
+	state := brain.snapshot()
+
+	if state.Dimensions["seismicTension"] <= 0 {
+		t.Errorf(
+			"expected seismic tension to increase, got %f",
+			state.Dimensions["seismicTension"],
+		)
+	}
+}

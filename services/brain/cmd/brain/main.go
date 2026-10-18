@@ -75,6 +75,7 @@ func newPlanetaryBrain() *planetaryBrain {
 				"solarExcitation":     0.0,
 				"machineVitality":     0.5,
 				"digitalActivity":     0.0,
+				"seismicTension":      0.0,
 			},
 		},
 	}
@@ -133,7 +134,8 @@ func (brain *planetaryBrain) apply(incoming incomingEvent) {
 			dimensions["windMotion"] +
 			dimensions["solarExcitation"] +
 			dimensions["digitalActivity"] +
-			dimensions["anomaly"]) / 5,
+			dimensions["seismicTension"] +
+			dimensions["anomaly"]) / 6,
 	)
 
 	dimensions["globalArousal"] = round(
@@ -182,6 +184,9 @@ func targetsForEvent(incoming incomingEvent) map[string]float64 {
 
 	case "agent.system":
 		return agentSystemTargets(incoming)
+
+	case "geophysical.seismic":
+		return seismicTargets(incoming)
 
 	default:
 		return nil
@@ -243,6 +248,24 @@ func agentSystemTargets(incoming incomingEvent) map[string]float64 {
 		"machineVitality": 1 - loadRatio,
 		"digitalActivity": loadRatio,
 		"sourceTrust":     clamp(incoming.Source.Trust),
+	}
+}
+
+func seismicTargets(incoming incomingEvent) map[string]float64 {
+	magnitude := number(incoming.Data["magnitude"], 0)
+	depthKm := number(incoming.Data["depthKm"], 700)
+
+	depthInfluence := 1 - clamp(depthKm/700)
+
+	seismicTension := clamp(
+		(magnitude/8)*0.8 +
+			depthInfluence*0.2,
+	)
+
+	return map[string]float64{
+		"seismicTension": seismicTension,
+		"anomaly":        clamp(seismicTension * 0.9),
+		"sourceTrust":    clamp(incoming.Source.Trust),
 	}
 }
 
