@@ -17,15 +17,29 @@ type server struct {
 }
 
 func main() {
-	eventJournal, err := journal.Open("data/events.ndjson")
+	journalPath := "data/events.ndjson"
+
+	savedEvents, err := journal.ReadAll(journalPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	eventJournal, err := journal.Open(journalPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer eventJournal.Close()
+
 	app := server{
 		events:  store.NewRecentEvents(256),
 		journal: eventJournal,
 	}
+
+	for _, savedEvent := range savedEvents {
+		app.events.Add(savedEvent)
+	}
+
+	log.Printf("restored %d persisted planetary events", len(savedEvents))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", app.health)
