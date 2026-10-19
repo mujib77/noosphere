@@ -14,7 +14,8 @@ const dimensions = [
   ["anomaly", "Anomaly"],
   ["sourceTrust", "Source trust"],
   ["machineVitality", "Machine vitality"],
-  ["digitalActivity", "Digital activity"]
+  ["digitalActivity", "Digital activity"],
+  ["seismicTension", "Seismic tension"]
 ];
 
 const planet = document.querySelector("#planet");
@@ -56,7 +57,8 @@ function sourceName(sourceID) {
     "noaa.swpc.planetary-k-index": "NOAA SWPC",
     "simulator.weather.bengaluru": "Weather simulator",
     "simulator.solar.global": "Solar simulator",
-    "agent.demo-node": "Linux agent"
+    "agent.demo-node": "Linux agent",
+    "usgs.earthquake.geojson": "USGS Earthquake Feed",
   };
 
   if (sourceID?.startsWith("agent.")) {
@@ -70,7 +72,8 @@ function eventTypeName(eventType) {
   const names = {
     "environment.weather": "Weather",
     "solar.activity": "Solar activity",
-    "agent.system": "Linux system"
+    "agent.system": "Linux system",
+    "geophysical.seismic": "Earthquake",
   };
 
   return names[eventType] ?? eventType ?? "Unknown event";
@@ -81,6 +84,7 @@ function renderState(state) {
   const arousal = values.globalArousal ?? 0;
   const anomaly = values.anomaly ?? 0;
   const solarExcitation = values.solarExcitation ?? 0;
+  const seismicTension = values.seismicTension ?? 0;
 
   activityValue.textContent = `${Math.round(arousal * 100)}%`;
   eventID.textContent = state.lastEventId ?? "Waiting for sensory input";
@@ -99,6 +103,10 @@ function renderState(state) {
   document.documentElement.style.setProperty(
   "--solar-halo",
   (0.08 + solarExcitation * 0.82).toFixed(3)
+);
+document.documentElement.style.setProperty(
+  "--seismic-ring",
+  (seismicTension * 0.8).toFixed(3)
 );
 
   connectionDot.classList.add("online");

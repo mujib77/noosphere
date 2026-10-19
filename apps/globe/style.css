@@ -10,6 +10,7 @@
   --glow-strength: 0.55;
   --planet-scale: 1;
   --solar-halo: 0.05;
+  --seismic-ring: 0;
 }
 
 * {
@@ -394,4 +395,22 @@ h1 {
 
 .solar-swatch {
   background: #ffd56d;
+}
+
+.planet-stage::after {
+  position: absolute;
+  inset: 12%;
+  z-index: 1;
+  border: 1px solid rgba(255, 142, 142, 0.9);
+  border-radius: 50%;
+  content: "";
+  opacity: var(--seismic-ring);
+  box-shadow: 0 0 28px rgba(255, 142, 142, 0.8);
+  animation: seismic-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes seismic-pulse {
+  50% {
+    transform: scale(1.14);
+  }
 }
