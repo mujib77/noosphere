@@ -414,3 +414,11 @@ h1 {
     transform: scale(1.14);
   }
 }
+
+.trace-seismic {
+  stroke: #ff8e8e;
+}
+
+.seismic-swatch {
+  background: #ff8e8e;
+}

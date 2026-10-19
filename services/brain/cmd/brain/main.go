@@ -48,6 +48,7 @@ type stateSample struct {
 	Coherence       float64 `json:"coherence"`
 	Anomaly         float64 `json:"anomaly"`
 	SolarExcitation float64 `json:"solarExcitation"`
+	SeismicTension  float64 `json:"seismicTension"`
 }
 
 type stateHistory struct {
@@ -162,6 +163,7 @@ func (brain *planetaryBrain) apply(incoming incomingEvent) {
 		Coherence:       brain.state.Dimensions["coherence"],
 		Anomaly:         brain.state.Dimensions["anomaly"],
 		SolarExcitation: brain.state.Dimensions["solarExcitation"],
+		SeismicTension:  brain.state.Dimensions["seismicTension"],
 	})
 
 	if len(brain.history) > historyLimit {

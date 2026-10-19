@@ -154,6 +154,7 @@ function renderHistory(samples) {
     <path class="trace-line trace-arousal" d="${tracePath(recentSamples, "globalArousal")}"></path>
     <path class="trace-line trace-coherence" d="${tracePath(recentSamples, "coherence")}"></path>
     <path class="trace-line trace-solar" d="${tracePath(recentSamples, "solarExcitation")}"></path>
+    <path class="trace-line trace-seismic" d="${tracePath(recentSamples, "seismicTension")}"></path>
     <path class="trace-line trace-anomaly" d="${tracePath(recentSamples, "anomaly")}"></path>
     <circle
       class="trace-dot trace-arousal"
