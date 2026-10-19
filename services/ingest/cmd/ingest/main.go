@@ -7,16 +7,24 @@ import (
 	"time"
 
 	"noosphere/services/ingest/internal/event"
+	"noosphere/services/ingest/internal/journal"
 	"noosphere/services/ingest/internal/store"
 )
 
 type server struct {
-	events *store.RecentEvents
+	events  *store.RecentEvents
+	journal *journal.Journal
 }
 
 func main() {
+	eventJournal, err := journal.Open("data/events.ndjson")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer eventJournal.Close()
 	app := server{
-		events: store.NewRecentEvents(256),
+		events:  store.NewRecentEvents(256),
+		journal: eventJournal,
 	}
 
 	mux := http.NewServeMux()
@@ -62,6 +70,13 @@ func (app server) ingestEvent(writer http.ResponseWriter, request *http.Request)
 		incoming.ReceivedAt.IsZero() || incoming.Source.ID == "" || incoming.Source.Kind == "" {
 		writeJSON(writer, http.StatusBadRequest, map[string]string{
 			"error": "event is missing required fields",
+		})
+		return
+	}
+
+	if err := app.journal.Append(incoming); err != nil {
+		writeJSON(writer, http.StatusInternalServerError, map[string]string{
+			"error": "could not persist event",
 		})
 		return
 	}
