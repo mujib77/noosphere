@@ -46,3 +46,35 @@ func TestAppendWritesNDJSON(t *testing.T) {
 		t.Fatalf("expected %q, got %q", incoming.ID, stored.ID)
 	}
 }
+
+func TestReadAllRestoresJournalEvents(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "events.ndjson")
+
+	journal, err := Open(path)
+	if err != nil {
+		t.Fatalf("open journal: %v", err)
+	}
+
+	for _, eventID := range []string{"evt_replay_001", "evt_replay_002"} {
+		if err := journal.Append(event.Event{ID: eventID}); err != nil {
+			t.Fatalf("append event: %v", err)
+		}
+	}
+
+	if err := journal.Close(); err != nil {
+		t.Fatalf("close journal: %v", err)
+	}
+
+	events, err := ReadAll(path)
+	if err != nil {
+		t.Fatalf("read journal: %v", err)
+	}
+
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(events))
+	}
+
+	if events[1].ID != "evt_replay_002" {
+		t.Fatalf("expected second event to be restored, got %q", events[1].ID)
+	}
+}
