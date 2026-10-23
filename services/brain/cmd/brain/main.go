@@ -15,10 +15,11 @@ import (
 )
 
 const (
-	ingestURL    = "http://localhost:8080/v1/events"
-	brainPort    = ":8090"
-	pollInterval = time.Second
-	historyLimit = 120
+	ingestURL           = "http://localhost:8080/v1/events"
+	brainPort           = ":8090"
+	pollInterval        = time.Second
+	historyLimit        = 120
+	dreamHorizonMinutes = 15
 )
 
 type incomingEvent struct {
@@ -53,6 +54,14 @@ type stateSample struct {
 
 type stateHistory struct {
 	Samples []stateSample `json:"samples"`
+}
+
+type dreamState struct {
+	GeneratedAt    string             `json:"generatedAt"`
+	HorizonMinutes int                `json:"horizonMinutes"`
+	Model          string             `json:"model"`
+	BasisEventID   string             `json:"basisEventId"`
+	Dimensions     map[string]float64 `json:"dimensions"`
 }
 
 type planetaryBrain struct {
@@ -302,6 +311,54 @@ func (brain *planetaryBrain) historySnapshot() stateHistory {
 	}
 }
 
+func (brain *planetaryBrain) dreamSnapshot() dreamState {
+	brain.mu.RLock()
+	defer brain.mu.RUnlock()
+
+	dimensions := make(map[string]float64, len(brain.state.Dimensions))
+
+	for name, value := range brain.state.Dimensions {
+		dimensions[name] = round(blend(value, 0.5, 0.04))
+	}
+
+	solar := brain.state.Dimensions["solarExcitation"]
+	seismic := brain.state.Dimensions["seismicTension"]
+	anomaly := brain.state.Dimensions["anomaly"]
+	arousal := brain.state.Dimensions["globalArousal"]
+	coherence := brain.state.Dimensions["coherence"]
+	sourceTrust := brain.state.Dimensions["sourceTrust"]
+	digitalActivity := brain.state.Dimensions["digitalActivity"]
+
+	futureAnomaly := clamp(
+		anomaly*0.74 +
+			solar*0.12 +
+			seismic*0.18,
+	)
+
+	dimensions["solarExcitation"] = round(blend(solar, 0, 0.08))
+	dimensions["seismicTension"] = round(blend(seismic, 0, 0.06))
+	dimensions["anomaly"] = round(futureAnomaly)
+	dimensions["globalArousal"] = round(clamp(
+		arousal*0.65 +
+			futureAnomaly*0.2 +
+			solar*0.1 +
+			digitalActivity*0.05,
+	))
+	dimensions["coherence"] = round(clamp(
+		coherence*0.92 +
+			sourceTrust*0.08 -
+			futureAnomaly*0.07,
+	))
+
+	return dreamState{
+		GeneratedAt:    time.Now().UTC().Format(time.RFC3339Nano),
+		HorizonMinutes: dreamHorizonMinutes,
+		Model:          "latent-extrapolator-v1",
+		BasisEventID:   brain.state.LastEventID,
+		Dimensions:     dimensions,
+	}
+}
+
 func fetchEvents(
 	client *http.Client,
 	afterEventID string,
@@ -340,6 +397,12 @@ func stateHandler(brain *planetaryBrain) http.HandlerFunc {
 func historyHandler(brain *planetaryBrain) http.HandlerFunc {
 	return func(writer http.ResponseWriter, _ *http.Request) {
 		writeJSON(writer, http.StatusOK, brain.historySnapshot())
+	}
+}
+
+func dreamHandler(brain *planetaryBrain) http.HandlerFunc {
+	return func(writer http.ResponseWriter, _ *http.Request) {
+		writeJSON(writer, http.StatusOK, brain.dreamSnapshot())
 	}
 }
 
@@ -388,6 +451,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/state", stateHandler(brain))
 	mux.HandleFunc("GET /v1/state/history", historyHandler(brain))
+	mux.HandleFunc("GET /v1/dream", dreamHandler(brain))
 
 	server := &http.Server{
 		Addr:              brainPort,
