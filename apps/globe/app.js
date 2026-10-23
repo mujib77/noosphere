@@ -55,6 +55,7 @@ function renderDimensions(values) {
 function sourceName(sourceID) {
   const names = {
     "noaa.swpc.planetary-k-index": "NOAA SWPC",
+    "open-meteo.current-weather": "Open-Meteo · Weather",
     "simulator.weather.bengaluru": "Weather simulator",
     "simulator.solar.global": "Solar simulator",
     "agent.demo-node": "Linux agent",
