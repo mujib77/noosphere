@@ -173,3 +173,48 @@ func TestApplyRespondsToSeismicEvent(t *testing.T) {
 		)
 	}
 }
+
+func TestDreamSnapshotProjectsCurrentLatentState(t *testing.T) {
+	brain := newPlanetaryBrain()
+
+	brain.apply(incomingEvent{
+		ID:   "evt_test_dream_solar_001",
+		Type: "solar.activity",
+		Source: source{
+			ID:    "test.noaa",
+			Trust: 0.98,
+		},
+		Data: map[string]any{
+			"kpIndex":      7.0,
+			"solarWindKph": 650.0,
+			"xrayFlux":     0.6,
+		},
+	})
+
+	current := brain.snapshot()
+	dream := brain.dreamSnapshot()
+
+	if dream.HorizonMinutes != dreamHorizonMinutes {
+		t.Fatalf(
+			"expected %d minute horizon, got %d",
+			dreamHorizonMinutes,
+			dream.HorizonMinutes,
+		)
+	}
+
+	if dream.Model != "latent-extrapolator-v1" {
+		t.Fatalf("unexpected dream model %q", dream.Model)
+	}
+
+	if dream.BasisEventID != current.LastEventID {
+		t.Fatalf(
+			"expected basis event %q, got %q",
+			current.LastEventID,
+			dream.BasisEventID,
+		)
+	}
+
+	if dream.Dimensions["solarExcitation"] >= current.Dimensions["solarExcitation"] {
+		t.Fatal("expected dream solar excitation to decay slightly")
+	}
+}
