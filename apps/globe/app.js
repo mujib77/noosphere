@@ -1,6 +1,7 @@
 const brainUrl = "http://localhost:8090/v1/state";
 
 const historyUrl = "http://localhost:8090/v1/state/history";
+const dreamUrl = "http://localhost:8090/v1/dream";
 const neuralTrace = document.querySelector("#neural-trace");
 
 const dimensions = [
@@ -26,6 +27,9 @@ const eventID = document.querySelector("#event-id");
 const eventSource = document.querySelector("#event-source");
 const updatedAt = document.querySelector("#updated-at");
 const dimensionsRoot = document.querySelector("#dimensions");
+const dreamToggle = document.querySelector("#dream-toggle");
+
+let dreamMode = false;
 
 function renderDimensions(values) {
   dimensionsRoot.innerHTML = dimensions
@@ -80,7 +84,7 @@ function eventTypeName(eventType) {
   return names[eventType] ?? eventType ?? "Unknown event";
 }
 
-function renderState(state) {
+function renderState(state, isDream = false) {
   const values = state.dimensions;
   const arousal = values.globalArousal ?? 0;
   const anomaly = values.anomaly ?? 0;
@@ -88,13 +92,21 @@ function renderState(state) {
   const seismicTension = values.seismicTension ?? 0;
 
   activityValue.textContent = `${Math.round(arousal * 100)}%`;
+if (isDream) {
+  eventID.textContent = `+${state.horizonMinutes} min projection`;
+  eventSource.textContent = "Speculative latent trajectory";
+  updatedAt.textContent = state.generatedAt
+    ? new Date(state.generatedAt).toLocaleTimeString()
+    : "--";
+} else {
   eventID.textContent = state.lastEventId ?? "Waiting for sensory input";
-  eventSource.textContent = `${sourceName(state.lastSourceId)} · ${eventTypeName(
-  state.lastEventType
-)}`;
+  eventSource.textContent = `${sourceName(state.lastSourceId)} / ${eventTypeName(
+    state.lastEventType
+  )}`;
   updatedAt.textContent = state.updatedAt
     ? new Date(state.updatedAt).toLocaleTimeString()
     : "--";
+}
 
   planet.style.setProperty("--planet-scale", (0.94 + arousal * 0.12).toFixed(3));
   document.documentElement.style.setProperty(
@@ -111,7 +123,7 @@ document.documentElement.style.setProperty(
 );
 
   connectionDot.classList.add("online");
-  connectionText.textContent = "Brain linked";
+ connectionText.textContent = isDream ? "Brain dreaming" : "Brain linked";
   renderDimensions(values);
 }
 
@@ -175,25 +187,45 @@ function renderOffline() {
 
 async function refreshState() {
   try {
-    const [stateResponse, historyResponse] = await Promise.all([
+    const [stateResponse, historyResponse, dreamResponse] = await Promise.all([
       fetch(brainUrl),
-      fetch(historyUrl)
+      fetch(historyUrl),
+      dreamMode ? fetch(dreamUrl) : Promise.resolve(null)
     ]);
 
-    if (!stateResponse.ok || !historyResponse.ok) {
+    if (
+      !stateResponse.ok ||
+      !historyResponse.ok ||
+      (dreamMode && !dreamResponse.ok)
+    ) {
       throw new Error("Brain state request failed");
     }
 
     const state = await stateResponse.json();
     const history = await historyResponse.json();
 
-    renderState(state);
+    if (dreamMode) {
+      const dream = await dreamResponse.json();
+      renderState(dream, true);
+    } else {
+      renderState(state);
+    }
+
     renderHistory(history.samples ?? []);
   } catch {
     renderOffline();
   }
 }
 
+dreamToggle.addEventListener("click", () => {
+  dreamMode = !dreamMode;
+
+  dreamToggle.textContent = dreamMode ? "Return live" : "Enter dream";
+  dreamToggle.setAttribute("aria-pressed", String(dreamMode));
+  document.body.classList.toggle("dreaming", dreamMode);
+
+  refreshState();
+});
 renderDimensions({});
 refreshState();
 setInterval(refreshState, 1000);

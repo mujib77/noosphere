@@ -422,3 +422,35 @@ h1 {
 .seismic-swatch {
   background: #ff8e8e;
 }
+
+.brain-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dream-toggle {
+  border: 1px solid rgba(99, 221, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(9, 30, 48, 0.72);
+  color: #83e8ff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.62rem 0.9rem;
+  text-transform: uppercase;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.dream-toggle:hover,
+.dream-toggle[aria-pressed="true"] {
+  border-color: rgba(255, 150, 236, 0.85);
+  background: rgba(78, 29, 91, 0.52);
+  color: #ffb4ee;
+}
+
+body.dreaming .planet {
+  filter: hue-rotate(28deg) saturate(1.3);
+}
