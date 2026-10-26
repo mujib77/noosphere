@@ -46,6 +46,7 @@ func main() {
 	mux.HandleFunc("POST /v1/events", app.ingestEvent)
 	mux.HandleFunc("GET /v1/events", app.recentEvents)
 	mux.HandleFunc("GET /v1/events/latest", app.latestEvent)
+	mux.HandleFunc("GET /v1/sources", app.sourceCensus)
 
 	httpServer := &http.Server{
 		Addr:              ":8080",
@@ -130,4 +131,16 @@ func writeJSON(writer http.ResponseWriter, status int, payload any) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(status)
 	_ = json.NewEncoder(writer).Encode(payload)
+}
+
+func (app server) sourceCensus(
+	writer http.ResponseWriter,
+	_ *http.Request,
+) {
+	sources := app.events.Sources()
+
+	writeJSON(writer, http.StatusOK, map[string]any{
+		"count":   len(sources),
+		"sources": sources,
+	})
 }
